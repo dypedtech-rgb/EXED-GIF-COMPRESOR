@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GIF Compressor — Compresión en lote sin servidor</title>
+  <meta name="description" content="Comprime tus GIFs directamente en el navegador, sin subir nada a un servidor. Carga varios archivos a la vez, ajusta calidad y escala, y descarga en lote." />
+  <meta name="keywords" content="comprimir gif, gif compressor, reducir tamaño gif, gif online, sin servidor" />
+  <meta name="author" content="GIF Compressor" />
+  <meta property="og:title" content="GIF Compressor — Online, gratis y privado" />
+  <meta property="og:description" content="Comprime GIFs en lote directamente en tu navegador. Sin límites de tamaño, sin servidores." />
+  <meta property="og:type" content="website" />
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎞</text></svg>" />
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- JSZip for batch download -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ HEADER ═══════════════════════════════════ -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+        <line x1="7" y1="2" x2="7" y2="22"></line>
+        <line x1="17" y1="2" x2="17" y2="22"></line>
+        <line x1="2" y1="12" x2="22" y2="12"></line>
+        <line x1="2" y1="7" x2="7" y2="7"></line>
+        <line x1="2" y1="17" x2="7" y2="17"></line>
+        <line x1="17" y1="17" x2="22" y2="17"></line>
+        <line x1="17" y1="7" x2="22" y2="7"></line>
+      </svg>
+    </div>
+    <div class="logo-text">
+      <h1>GIF Compressor</h1>
+      <p>Powered by Gifsicle · Client-side · Open source</p>
+    </div>
+  </div>
+  <div class="header-badge">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+    <span>100% privado — todo en tu navegador</span>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════ MAIN ════════════════════════════════════ -->
+<main>
+  <div class="main-workspace">
+  <!-- DROP ZONE -->
+  <div class="drop-zone" id="drop-zone" role="button" aria-label="Zona de carga de GIFs">
+    <div class="drop-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <h2>Arrastra tus GIFs aquí</h2>
+    <p>Puedes cargar múltiples archivos a la vez para procesarlos en lote</p>
+    <button class="btn-browse" id="btn-browse">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+      </svg>
+      Seleccionar archivos
+    </button>
+    <div class="drop-formats">Soporta: .gif · Sin límite de tamaño · 100% local</div>
+    <input type="file" id="file-input" accept="image/gif" multiple hidden />
+  </div>
+
+  <!-- OVERALL PROGRESS -->
+  <div class="overall-progress" id="overall-progress">
+    <div class="overall-label">
+      <span id="overall-label">Listo</span>
+      <span id="overall-pct">0%</span>
+    </div>
+    <div class="overall-bar">
+      <div class="overall-bar-fill" id="overall-fill"></div>
+    </div>
+  </div>
+
+  <!-- QUEUE SECTION -->
+  <section class="queue-section" aria-label="Cola de archivos GIF">
+    <div class="queue-header">
+      <div class="queue-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="8" y1="6" x2="21" y2="6"/>
+          <line x1="8" y1="12" x2="21" y2="12"/>
+          <line x1="8" y1="18" x2="21" y2="18"/>
+          <line x1="3" y1="6" x2="3.01" y2="6"/>
+          <line x1="3" y1="12" x2="3.01" y2="12"/>
+          <line x1="3" y1="18" x2="3.01" y2="18"/>
+        </svg>
+        Cola de archivos
+        <span class="queue-count" id="queue-count">0</span>
+      </div>
+    </div>
+
+    <div id="queue-empty" class="queue-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21 15 16 10 5 21"/>
+      </svg>
+      Aún no hay GIFs cargados.<br/>Arrastra archivos o usa el botón de arriba.
+    </div>
+
+    <div id="queue-list" role="list" aria-label="Lista de GIFs"></div>
+  </section>
+  </div>
+
+  <!-- SETTINGS SIDEBAR -->
+  <aside class="settings-panel" aria-label="Configuración de compresión">
+
+    <!-- Optimization settings -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/>
+        </svg>
+        Nivel de optimización
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Modo</span>
+        </div>
+        <select class="setting-select" id="optimize" aria-label="Nivel de optimización">
+          <option value="1">O1 — Rápido (básico)</option>
+          <option value="2" selected>O2 — Equilibrado (recomendado)</option>
+          <option value="3">O3 — Máximo (más lento)</option>
+        </select>
+        <div style="margin-top:8px;font-size:0.72rem;color:var(--text-muted);line-height:1.5">
+          Optimiza frames eliminando datos redundantes sin perder calidad visual.
+        </div>
+      </div>
+    </div>
+
+    <!-- Compression settings -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Compresión
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Compresión lossy</span>
+          <span class="setting-value" id="lossy-val">OFF</span>
+        </div>
+        <input type="range" id="lossy" min="0" max="200" value="0" step="5"
+               aria-label="Nivel de compresión lossy" />
+        <div style="display:flex;justify-content:space-between;margin-top:4px">
+          <span style="font-size:0.7rem;color:var(--text-muted)">Sin pérdida</span>
+          <span style="font-size:0.7rem;color:var(--text-muted)">Máxima compresión</span>
+        </div>
+        <div style="margin-top:6px;font-size:0.72rem;color:var(--text-muted);line-height:1.5">
+          Valores 30–80 dan buena compresión sin pérdida visible. Usar 0 para lossless.
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Escala de tamaño</span>
+          <span class="setting-value" id="scale-val">100%</span>
+        </div>
+        <input type="range" id="scale" min="10" max="100" value="100" step="5"
+               aria-label="Escala de redimensionado" />
+        <div style="display:flex;justify-content:space-between;margin-top:4px">
+          <span style="font-size:0.7rem;color:var(--text-muted)">10%</span>
+          <span style="font-size:0.7rem;color:var(--text-muted)">100% (original)</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Colores máximos</span>
+          <span class="setting-value" id="colors-val">Auto</span>
+        </div>
+        <input type="range" id="colors" min="8" max="256" value="256" step="8"
+               aria-label="Cantidad máxima de colores" />
+        <div style="display:flex;justify-content:space-between;margin-top:4px">
+          <span style="font-size:0.7rem;color:var(--text-muted)">8 colores</span>
+          <span style="font-size:0.7rem;color:var(--text-muted)">256 (auto)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Presets -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+          <polyline points="17 21 17 13 7 13 7 21"/>
+          <polyline points="7 3 7 8 15 8"/>
+        </svg>
+        Presets
+      </div>
+      <div class="preset-controls">
+        <select class="setting-select" id="preset-select" aria-label="Seleccionar preset">
+          <option value="">— Configuración actual —</option>
+        </select>
+        <div class="preset-buttons">
+          <button class="btn-preset" id="btn-preset-load" title="Cargar preset" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+            Cargar
+          </button>
+          <button class="btn-preset" id="btn-preset-save" title="Guardar preset actual">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+            Guardar
+          </button>
+          <button class="btn-preset btn-preset-delete" id="btn-preset-delete" title="Eliminar preset" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        Acciones
+      </div>
+      <button class="btn-action btn-primary" id="btn-compress" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>
+        </svg>
+        Comprimir todo
+      </button>
+      <button class="btn-action btn-secondary" id="btn-download-all" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Descargar todo (.zip)
+      </button>
+      <button class="btn-action btn-danger" id="btn-clear" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+        </svg>
+        Limpiar cola
+      </button>
+    </div>
+
+    <!-- Stats -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10"/>
+          <line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6"  y1="20" x2="6"  y2="14"/>
+        </svg>
+        Estadísticas
+      </div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-number" id="stat-total">0</div>
+          <div class="stat-label">Total</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number" id="stat-done">0</div>
+          <div class="stat-label">Listos</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number" id="stat-saved">–</div>
+          <div class="stat-label">Espacio ahorrado</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number" id="stat-avg">–</div>
+          <div class="stat-label">Reducción media</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- How it works -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 16v-4M12 8h.01"/>
+        </svg>
+        ¿Cómo funciona?
+      </div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:10px">
+        <li style="display:flex;gap:10px;align-items:flex-start">
+          <span style="flex-shrink:0;color:var(--accent)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </span>
+          <span style="font-size:0.8rem;color:var(--text-secondary);line-height:1.5">Tus GIFs nunca salen de tu dispositivo. Todo se procesa en el navegador con WebAssembly.</span>
+        </li>
+        <li style="display:flex;gap:10px;align-items:flex-start">
+          <span style="flex-shrink:0;color:var(--accent)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+          </span>
+          <span style="font-size:0.8rem;color:var(--text-secondary);line-height:1.5">Usa <strong>gifsicle</strong>, la misma herramienta profesional de línea de comandos, compilada a WebAssembly.</span>
+        </li>
+        <li style="display:flex;gap:10px;align-items:flex-start">
+          <span style="flex-shrink:0;color:var(--accent)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+              <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+              <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+              <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
+            </svg>
+          </span>
+          <span style="font-size:0.8rem;color:var(--text-secondary);line-height:1.5">Optimiza frames sin re-cuantizar colores — preserva la calidad original del GIF.</span>
+        </li>
+      </ul>
+    </div>
+
+  </aside>
+
+</main>
+
+<!-- ═══════════════════════════════ FOOTER ═══════════════════════════════════ -->
+<footer>
+  <span>GIF Compressor · Powered by Gifsicle WASM · Open Source</span>
+  <a href="https://github.com/" target="_blank" rel="noopener noreferrer">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+    </svg>
+    Ver en GitHub
+  </a>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

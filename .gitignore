@@ -1,0 +1,4 @@
+*.gif
+gif.worker.js
+.DS_Store
+node_modules/
