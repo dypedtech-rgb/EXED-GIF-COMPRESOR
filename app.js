@@ -589,61 +589,86 @@ const smartColorsCheckbox = document.getElementById('smart-colors');
 const smartColorResult = document.getElementById('smart-color-result');
 
 /**
- * Analyze a GIF's first frame to count unique colors.
- * Draws to an offscreen canvas, reads pixel data, counts unique RGB values.
+ * Analyze a GIF to count its actual unique colors.
+ * Two-pass approach:
+ *   1. Parse the GIF binary header to read the Global Color Table size (max palette)
+ *   2. Draw at native resolution with NO smoothing to count actually-used colors
  */
 function analyzeColors(file) {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      // Use a reasonably sized canvas (scale down very large images for speed)
-      const maxDim = 200;
-      let w = img.width, h = img.height;
-      if (w > maxDim || h > maxDim) {
-        const ratio = Math.min(maxDim / w, maxDim / h);
-        w = Math.round(w * ratio);
-        h = Math.round(h * ratio);
+  return new Promise(async (resolve) => {
+    try {
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+
+      // --- Pass 1: Read GCT from GIF binary header ---
+      // Byte 10, bit 7 = Global Color Table flag
+      // Byte 10, bits 0-2 = GCT size exponent (table has 2^(N+1) entries)
+      const packed = bytes[10];
+      const hasGCT = (packed >> 7) & 1;
+      const gctSize = hasGCT ? Math.pow(2, (packed & 0x07) + 1) : 256;
+
+      // If the palette is already small, no need for pixel analysis
+      if (gctSize <= 64) {
+        resolve({ paletteSize: gctSize, usedColors: gctSize });
+        return;
       }
 
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
+      // --- Pass 2: Canvas pixel analysis (no smoothing, native size) ---
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        // Cap at 300px to keep it fast, but use nearest-neighbor (no smoothing)
+        const maxDim = 300;
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if (w > maxDim || h > maxDim) {
+          const ratio = Math.min(maxDim / w, maxDim / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
 
-      const imageData = ctx.getImageData(0, 0, w, h);
-      const data = imageData.data;
-      const colors = new Set();
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        // CRITICAL: disable smoothing to preserve exact palette colors
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, 0, 0, w, h);
 
-      for (let i = 0; i < data.length; i += 4) {
-        // Skip fully transparent pixels
-        if (data[i + 3] < 10) continue;
-        // Pack RGB into a single integer for fast Set lookup
-        const key = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
-        colors.add(key);
-      }
+        const imageData = ctx.getImageData(0, 0, w, h);
+        const data = imageData.data;
+        const colors = new Set();
 
-      URL.revokeObjectURL(url);
-      resolve(colors.size);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(256); // fallback
-    };
-    img.src = url;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] < 10) continue;
+          // Quantize to 6-bit per channel to ignore minor rounding artifacts
+          const r = data[i] >> 2;
+          const g = data[i + 1] >> 2;
+          const b = data[i + 2] >> 2;
+          const key = (r << 12) | (g << 6) | b;
+          colors.add(key);
+        }
+
+        URL.revokeObjectURL(url);
+        resolve({ paletteSize: gctSize, usedColors: colors.size });
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve({ paletteSize: gctSize, usedColors: gctSize });
+      };
+      img.src = url;
+    } catch {
+      resolve({ paletteSize: 256, usedColors: 256 });
+    }
   });
 }
 
 /**
- * Round up to nearest "nice" palette size for gifsicle
+ * Calculate optimal palette size from detected colors.
+ * Adds 15% headroom for inter-frame variation, snaps to step of 8.
  */
-function optimalPaletteSize(uniqueColors) {
-  // Add 10% headroom for inter-frame color variation
-  const target = Math.ceil(uniqueColors * 1.1);
-  // Snap to nearest step of 8, min 16, max 256
-  const snapped = Math.min(256, Math.max(16, Math.ceil(target / 8) * 8));
-  return snapped;
+function optimalPaletteSize(usedColors) {
+  const target = Math.ceil(usedColors * 1.15);
+  return Math.min(256, Math.max(16, Math.ceil(target / 8) * 8));
 }
 
 async function runSmartColorAnalysis() {
@@ -656,19 +681,21 @@ async function runSmartColorAnalysis() {
   smartColorResult.className = 'smart-color-result analyzing';
   smartColorResult.textContent = 'Analizando paleta…';
 
-  // Analyze each file and find the max unique colors across all
-  let maxColors = 0;
+  // Analyze each file and find the max used colors across all
+  let maxUsed = 0;
+  let maxPalette = 0;
   for (const item of state.files) {
     if (item.status === 'done') continue;
-    const count = await analyzeColors(item.file);
-    item.detectedColors = count;
-    if (count > maxColors) maxColors = count;
+    const result = await analyzeColors(item.file);
+    item.detectedColors = result.usedColors;
+    if (result.usedColors > maxUsed) maxUsed = result.usedColors;
+    if (result.paletteSize > maxPalette) maxPalette = result.paletteSize;
   }
 
-  const optimal = optimalPaletteSize(maxColors);
+  const optimal = optimalPaletteSize(maxUsed);
 
   smartColorResult.className = 'smart-color-result';
-  smartColorResult.innerHTML = `Detectados: <strong>${maxColors}</strong> colores únicos → Óptimo: <strong>${optimal}</strong>`;
+  smartColorResult.innerHTML = `Paleta: ${maxPalette} · En uso: <strong>${maxUsed}</strong> → Óptimo: <strong>${optimal}</strong>`;
 
   // Auto-apply to slider
   if (optimal < 256) {
