@@ -13,6 +13,7 @@ const gifsicleReady = import('https://cdn.jsdelivr.net/npm/gifsicle-wasm-browser
 const state = {
   files: [],
   isProcessing: false,
+  sourceFolderName: null,
   settings: {
     optimize: 2,       // -O1, -O2, -O3
     lossy: 0,          // 0 = off, 1–200 (30-60 recommended)
@@ -146,8 +147,17 @@ colorsSlider.addEventListener('input', onSettingsChanged);
 
 dropZone.addEventListener('drop', e => {
   const files = [...e.dataTransfer.files].filter(f => f.type === 'image/gif');
-  if (files.length) addFiles(files);
-  else showToast('Solo se aceptan archivos .GIF', 'warning');
+  if (files.length) {
+    // Try to capture the source folder name from the path
+    const firstPath = files[0].webkitRelativePath || files[0].name;
+    const pathParts = firstPath.split('/');
+    if (pathParts.length > 1) {
+      state.sourceFolderName = pathParts[pathParts.length - 2];
+    }
+    addFiles(files);
+  } else {
+    showToast('Solo se aceptan archivos .GIF', 'warning');
+  }
 });
 
 dropZone.addEventListener('click', () => fileInput.click());
@@ -515,7 +525,7 @@ function downloadSingle(item) {
   if (!item.url) return;
   const a = document.createElement('a');
   a.href     = item.url;
-  a.download = item.name.replace(/\.gif$/i, '_compressed.gif');
+  a.download = item.name.replace(/\.gif$/i, '_Comp.gif');
   a.click();
 }
 
@@ -530,14 +540,17 @@ async function downloadAll() {
 
   const zip = new JSZip();
   done.forEach(item => {
-    zip.file(item.name.replace(/\.gif$/i, '_compressed.gif'), item.blob);
+    zip.file(item.name.replace(/\.gif$/i, '_Comp.gif'), item.blob);
   });
 
   const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = 'gifs_comprimidos.zip';
+  const zipName = state.sourceFolderName
+    ? `${state.sourceFolderName}_Comp.zip`
+    : 'gifs_Comp.zip';
+  a.download = zipName;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
