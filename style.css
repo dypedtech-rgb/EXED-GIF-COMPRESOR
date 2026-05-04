@@ -922,6 +922,76 @@ footer a:hover { text-decoration: underline; }
   background: rgba(248,113,113,0.12);
 }
 
+/* === SMART COLOR DETECTOR === */
+.smart-color-row {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.smart-color-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.smart-color-toggle input { display: none; }
+
+.smart-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+
+.smart-check svg { width: 12px; height: 12px; opacity: 0; transition: opacity 0.15s; }
+
+.smart-color-toggle input:checked ~ .smart-check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.smart-color-toggle input:checked ~ .smart-check svg {
+  opacity: 1;
+  color: #000;
+}
+
+.smart-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.smart-label svg { width: 14px; height: 14px; color: var(--accent); }
+
+.smart-color-result {
+  margin-top: 6px;
+  font-size: 0.72rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--success);
+  padding: 4px 10px;
+  background: rgba(52,211,153,0.08);
+  border: 1px solid rgba(52,211,153,0.15);
+  border-radius: 6px;
+  line-height: 1.5;
+}
+
+.smart-color-result.analyzing {
+  color: var(--warning);
+  background: rgba(251,191,36,0.06);
+  border-color: rgba(251,191,36,0.12);
+}
+
 /* === SPARKLE CURSOR === */
 .sparkle {
   position: fixed;

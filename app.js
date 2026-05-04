@@ -188,6 +188,11 @@ function addFiles(files) {
     renderQueueItem(item);
   });
   updateUI();
+
+  // Re-run smart color analysis if enabled
+  if (document.getElementById('smart-colors')?.checked) {
+    setTimeout(() => runSmartColorAnalysis(), 100);
+  }
 }
 
 function removeFile(id) {
@@ -578,6 +583,110 @@ function showToast(message, type = 'info') {
     setTimeout(() => toast.remove(), 300);
   }, 3000);
 }
+
+// ─── Smart Color Detector ─────────────────────────────────────────────────────
+const smartColorsCheckbox = document.getElementById('smart-colors');
+const smartColorResult = document.getElementById('smart-color-result');
+
+/**
+ * Analyze a GIF's first frame to count unique colors.
+ * Draws to an offscreen canvas, reads pixel data, counts unique RGB values.
+ */
+function analyzeColors(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      // Use a reasonably sized canvas (scale down very large images for speed)
+      const maxDim = 200;
+      let w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) {
+        const ratio = Math.min(maxDim / w, maxDim / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const imageData = ctx.getImageData(0, 0, w, h);
+      const data = imageData.data;
+      const colors = new Set();
+
+      for (let i = 0; i < data.length; i += 4) {
+        // Skip fully transparent pixels
+        if (data[i + 3] < 10) continue;
+        // Pack RGB into a single integer for fast Set lookup
+        const key = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
+        colors.add(key);
+      }
+
+      URL.revokeObjectURL(url);
+      resolve(colors.size);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(256); // fallback
+    };
+    img.src = url;
+  });
+}
+
+/**
+ * Round up to nearest "nice" palette size for gifsicle
+ */
+function optimalPaletteSize(uniqueColors) {
+  // Add 10% headroom for inter-frame color variation
+  const target = Math.ceil(uniqueColors * 1.1);
+  // Snap to nearest step of 8, min 16, max 256
+  const snapped = Math.min(256, Math.max(16, Math.ceil(target / 8) * 8));
+  return snapped;
+}
+
+async function runSmartColorAnalysis() {
+  if (!smartColorsCheckbox.checked || state.files.length === 0) {
+    smartColorResult.style.display = 'none';
+    return;
+  }
+
+  smartColorResult.style.display = 'block';
+  smartColorResult.className = 'smart-color-result analyzing';
+  smartColorResult.textContent = 'Analizando paleta…';
+
+  // Analyze each file and find the max unique colors across all
+  let maxColors = 0;
+  for (const item of state.files) {
+    if (item.status === 'done') continue;
+    const count = await analyzeColors(item.file);
+    item.detectedColors = count;
+    if (count > maxColors) maxColors = count;
+  }
+
+  const optimal = optimalPaletteSize(maxColors);
+
+  smartColorResult.className = 'smart-color-result';
+  smartColorResult.innerHTML = `Detectados: <strong>${maxColors}</strong> colores únicos → Óptimo: <strong>${optimal}</strong>`;
+
+  // Auto-apply to slider
+  if (optimal < 256) {
+    colorsSlider.value = optimal;
+    onSettingsChanged();
+  }
+}
+
+smartColorsCheckbox.addEventListener('change', () => {
+  if (smartColorsCheckbox.checked) {
+    runSmartColorAnalysis();
+  } else {
+    smartColorResult.style.display = 'none';
+    // Reset to auto (256)
+    colorsSlider.value = 256;
+    onSettingsChanged();
+  }
+});
 
 // ─── Presets system (file-based save/open) ────────────────────────────────────
 const btnPresetSave = document.getElementById('btn-preset-save');
