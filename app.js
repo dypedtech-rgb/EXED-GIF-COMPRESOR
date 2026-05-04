@@ -630,8 +630,7 @@ function analyzeColors(file) {
         canvas.width = w;
         canvas.height = h;
         const ctx = canvas.getContext('2d');
-        // CRITICAL: disable smoothing to preserve exact palette colors
-        ctx.imageSmoothingEnabled = false;
+        // Use default smoothing (antialiasing enabled)
         ctx.drawImage(img, 0, 0, w, h);
 
         const imageData = ctx.getImageData(0, 0, w, h);
@@ -640,12 +639,11 @@ function analyzeColors(file) {
 
         for (let i = 0; i < data.length; i += 4) {
           if (data[i + 3] < 10) continue;
-          // Quantize to 4-bit per channel (16 levels) to group visually similar colors
-          // Colors differing by ≤15 per channel are treated as identical
-          const r = data[i] >> 4;
-          const g = data[i + 1] >> 4;
-          const b = data[i + 2] >> 4;
-          const key = (r << 8) | (g << 4) | b;
+          // Quantize to 6-bit per channel to group colors (as requested)
+          const r = data[i] >> 2;
+          const g = data[i + 1] >> 2;
+          const b = data[i + 2] >> 2;
+          const key = (r << 12) | (g << 6) | b;
           colors.add(key);
         }
 
