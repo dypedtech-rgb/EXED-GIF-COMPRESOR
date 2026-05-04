@@ -632,3 +632,33 @@ updateUI();
 // Expose for debugging/testing
 window._gifApp = { addFiles, compressAll };
 
+// ─── Sparkle cursor trail ─────────────────────────────────────────────────────
+(() => {
+  let lastSparkle = 0;
+  const THROTTLE = 40; // ms between sparkles
+
+  document.addEventListener('mousemove', (e) => {
+    const now = Date.now();
+    if (now - lastSparkle < THROTTLE) return;
+    lastSparkle = now;
+
+    const sparkle = document.createElement('div');
+    sparkle.className = 'sparkle';
+
+    // Random offset for organic feel
+    const dx = (Math.random() - 0.5) * 20;
+    const dy = (Math.random() - 0.5) * 20;
+    sparkle.style.left = (e.clientX - 3) + 'px';
+    sparkle.style.top = (e.clientY - 3) + 'px';
+    sparkle.style.setProperty('--dx', dx + 'px');
+    sparkle.style.setProperty('--dy', dy + 'px');
+
+    // Random size variation
+    const size = 3 + Math.random() * 5;
+    sparkle.style.width = size + 'px';
+    sparkle.style.height = size + 'px';
+
+    document.body.appendChild(sparkle);
+    sparkle.addEventListener('animationend', () => sparkle.remove());
+  });
+})();
