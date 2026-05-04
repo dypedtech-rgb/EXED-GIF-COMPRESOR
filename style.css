@@ -96,6 +96,36 @@ header {
   text-transform: uppercase;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-release-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(124,58,237,0.12);
+  border: 1px solid rgba(124,58,237,0.3);
+  border-radius: 100px;
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  color: #a78bfa;
+  font-weight: 600;
+  text-decoration: none;
+  font-family: 'JetBrains Mono', monospace;
+  transition: all var(--transition);
+}
+
+.header-release-btn:hover {
+  background: rgba(124,58,237,0.2);
+  border-color: rgba(124,58,237,0.5);
+  transform: translateY(-1px);
+}
+
+.header-release-btn svg { width: 13px; height: 13px; }
+
 .header-badge {
   display: flex;
   align-items: center;
@@ -103,13 +133,13 @@ header {
   background: rgba(79,195,247,0.08);
   border: 1px solid var(--border-accent);
   border-radius: 100px;
-  padding: 6px 14px;
-  font-size: 0.78rem;
+  padding: 5px 12px;
+  font-size: 0.75rem;
   color: var(--accent);
   font-weight: 500;
 }
 
-.header-badge svg { width: 14px; height: 14px; }
+.header-badge svg { width: 13px; height: 13px; }
 
 /* === MAIN LAYOUT === */
 main {

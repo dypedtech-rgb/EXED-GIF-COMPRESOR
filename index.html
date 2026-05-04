@@ -35,15 +35,24 @@
       </svg>
     </div>
     <div class="logo-text">
-      <h1>GIF Compressor</h1>
-      <p>Powered by Gifsicle · Client-side · Open source</p>
+      <h1>EXED GIF Compressor</h1>
+      <p>by EdTech · Powered by Gifsicle WASM</p>
     </div>
   </div>
-  <div class="header-badge">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-    </svg>
-    <span>100% privado — todo en tu navegador</span>
+  <div class="header-actions">
+    <a class="header-release-btn" href="https://github.com/dypedtech-rgb/EXED-GIF-COMPRESOR/releases" target="_blank" rel="noopener noreferrer" title="Ver novedades y releases">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+        <line x1="7" y1="7" x2="7.01" y2="7"/>
+      </svg>
+      <span>v1.0.0</span>
+    </a>
+    <div class="header-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      <span>100% privado</span>
+    </div>
   </div>
 </header>
 
@@ -203,22 +212,17 @@
         Presets
       </div>
       <div class="preset-controls">
-        <select class="setting-select" id="preset-select" aria-label="Seleccionar preset">
-          <option value="">— Configuración actual —</option>
-        </select>
         <div class="preset-buttons">
-          <button class="btn-preset" id="btn-preset-load" title="Cargar preset" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
-            Cargar
+          <button class="btn-preset" id="btn-preset-save" title="Guardar configuración actual como archivo .json">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Guardar preset
           </button>
-          <button class="btn-preset" id="btn-preset-save" title="Guardar preset actual">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
-            Guardar
-          </button>
-          <button class="btn-preset btn-preset-delete" id="btn-preset-delete" title="Eliminar preset" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+          <button class="btn-preset" id="btn-preset-open" title="Abrir un archivo de preset .json">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+            Abrir preset
           </button>
         </div>
+        <input type="file" id="preset-file-input" accept=".json" hidden />
       </div>
     </div>
 
@@ -331,12 +335,12 @@
 
 <!-- ═══════════════════════════════ FOOTER ═══════════════════════════════════ -->
 <footer>
-  <span>GIF Compressor · Powered by Gifsicle WASM · Open Source</span>
-  <a href="https://github.com/" target="_blank" rel="noopener noreferrer">
+  <span>EXED GIF Compressor · Developed by <strong>EdTech</strong> · Open Source</span>
+  <a href="https://github.com/dypedtech-rgb/EXED-GIF-COMPRESOR" target="_blank" rel="noopener noreferrer">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
       <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
     </svg>
-    Ver en GitHub
+    GitHub
   </a>
 </footer>
 

@@ -566,91 +566,69 @@ function showToast(message, type = 'info') {
   }, 3000);
 }
 
-// ─── Presets system (localStorage) ────────────────────────────────────────────
-const PRESETS_KEY = 'gifcompressor_presets';
-const presetSelect = document.getElementById('preset-select');
-const btnPresetLoad = document.getElementById('btn-preset-load');
+// ─── Presets system (file-based save/open) ────────────────────────────────────
 const btnPresetSave = document.getElementById('btn-preset-save');
-const btnPresetDelete = document.getElementById('btn-preset-delete');
+const btnPresetOpen = document.getElementById('btn-preset-open');
+const presetFileInput = document.getElementById('preset-file-input');
 
-function getPresets() {
-  try {
-    return JSON.parse(localStorage.getItem(PRESETS_KEY)) || {};
-  } catch { return {}; }
-}
-
-function savePresets(presets) {
-  localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
-}
-
-function populatePresetDropdown() {
-  const presets = getPresets();
-  // Clear all except the first option
-  while (presetSelect.options.length > 1) presetSelect.remove(1);
-  
-  Object.keys(presets).sort().forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name;
-    opt.textContent = name;
-    presetSelect.appendChild(opt);
-  });
-  
-  updatePresetButtons();
-}
-
-function updatePresetButtons() {
-  const hasSelection = presetSelect.value !== '';
-  btnPresetLoad.disabled = !hasSelection;
-  btnPresetDelete.disabled = !hasSelection;
-}
-
-presetSelect.addEventListener('change', updatePresetButtons);
-
+// Save current settings as a .json file
 btnPresetSave.addEventListener('click', () => {
   const name = prompt('Nombre del preset:');
   if (!name || !name.trim()) return;
-  
-  const presets = getPresets();
-  presets[name.trim()] = { ...state.settings };
-  savePresets(presets);
-  populatePresetDropdown();
-  presetSelect.value = name.trim();
-  updatePresetButtons();
-  showToast(`Preset "${name.trim()}" guardado`);
+
+  const preset = {
+    name: name.trim(),
+    version: '1.0.0',
+    app: 'EXED GIF Compressor',
+    created: new Date().toISOString(),
+    settings: { ...state.settings },
+  };
+
+  const blob = new Blob([JSON.stringify(preset, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${name.trim().replace(/\s+/g, '_')}.preset.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Preset "${name.trim()}" guardado como archivo`);
 });
 
-btnPresetLoad.addEventListener('click', () => {
-  const name = presetSelect.value;
-  if (!name) return;
-  
-  const presets = getPresets();
-  const preset = presets[name];
-  if (!preset) return;
-  
-  // Apply preset values to settings and UI controls
-  optimizeSelect.value = preset.optimize || 2;
-  lossySlider.value = preset.lossy || 0;
-  scaleSlider.value = preset.scale || 100;
-  colorsSlider.value = preset.colors || 256;
-  onSettingsChanged();
-  showToast(`Preset "${name}" cargado`);
+// Open a .json preset file
+btnPresetOpen.addEventListener('click', () => {
+  presetFileInput.click();
 });
 
-btnPresetDelete.addEventListener('click', () => {
-  const name = presetSelect.value;
-  if (!name) return;
-  if (!confirm(`¿Eliminar preset "${name}"?`)) return;
-  
-  const presets = getPresets();
-  delete presets[name];
-  savePresets(presets);
-  populatePresetDropdown();
-  showToast(`Preset "${name}" eliminado`, 'warning');
+presetFileInput.addEventListener('change', () => {
+  const file = presetFileInput.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const preset = JSON.parse(e.target.result);
+      const s = preset.settings || preset;
+
+      // Apply preset values to settings and UI controls
+      if (s.optimize) optimizeSelect.value = s.optimize;
+      if (s.lossy !== undefined) lossySlider.value = s.lossy;
+      if (s.scale) scaleSlider.value = s.scale;
+      if (s.colors) colorsSlider.value = s.colors;
+      onSettingsChanged();
+
+      const label = preset.name || file.name.replace('.preset.json', '');
+      showToast(`Preset "${label}" cargado`);
+    } catch (err) {
+      showToast('Error: archivo de preset inválido', 'warning');
+    }
+  };
+  reader.readAsText(file);
+  presetFileInput.value = '';
 });
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-populatePresetDropdown();
 updateUI();
 
 // Expose for debugging/testing
 window._gifApp = { addFiles, compressAll };
+
